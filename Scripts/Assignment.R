@@ -1,73 +1,83 @@
-rm(list = ls())
-wd<- path.expand("~/Assignments/")
+setwd("~/GitHub/R-Assignments/Data")
+wd<- path.expand("~/GitHub/R-Assignments/Data")
 library(openxlsx)
 library(dplyr)
 library(tidyr)
 
+#list of all files that need to be cleaned
+file.list <- list.files()
+
+DataCleanUP(file.list){
+  #Cleans up each file in the file list and then combines all files into one file
+  #   
+  #Args:
+  #   file.list: list of files that will be combined
+  #Return:
+  #   clean.file: data frame of all the cleaned up files
+  clean.data.frame.list <- list(length=length(file.list))
+  for(i in seq_len(length(file.list))){
+    
+    date.sales.spread <-as.data.frame( read.table(paste0(wd,"/",file.list[i]),header=FALSE, sep=";"))
+    #Remove the last row i.e remove the overall sales calculations
+    dates.product.info <- date.sales.spread[-nrow(date.sales.spread),]
+    
+    #%%%%%%%%%%%%Creating appropriate column names that will be in the format "date.salesInformation"%%%%%%%%%%%%%%#
+    #Retrieve dates 
+    dates <- as.data.frame.array( date.sales.spread[1, ])
+    
+    #retrieve sales information and removing space, dots and dashes in each column 
+    sales.column.names <- as.data.frame.array(date.sales.spread[2, ])
+    
+    for(l in seq_len(length( sales.column.names))){
+      sales.column.names[l] <- gsub(" ","",sales.column.names[l])
+      sales.column.names[l] <- gsub("[.]","",sales.column.names[l])
+      sales.column.names[l] <- gsub("[-]","",sales.column.names[l])
+      if(l>7){
+        #Putting together the column names 
+        sales.column.names[l] <- paste0(dates[l],".",sales.column.names[l] )
+        
+      }
+    }
+    
+    
+    #Setting date.sales.sprea data frame's column names 
+    names(date.sales.spread) <- sales.column.names
+    
+    #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Data frame structure clean up %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%# 
+    
+    #Remove the first 2 rows to remove the dates and sales information 
+    date.sales.spread <-date.sales.spread[-(1:2), ]
+    
+    #Gather the date.sales.spread data frame by the date.SalesInfo
+    gather.date.sales <- gather( data = date.sales.spread, key = SalesDate, value = Value,-SuppCd,-SupplierName,-SubDepartment,
+                                 -ProductCode,-EAN,-ProductDescription,-Size)
+    
+    #Separate the date and sales Info
+    separate.date.sales <- gather.date.sales %>% separate( data = SalesDate, into = c("Date","SalesInfo"), sep = ".")
+    
+    #Spread the separate.date.sales date frame by date and sales information, this is the final clean data frame 
+    spread.date.sales <- spread( separate.date.sales, SalesInfo)
+    
+    #Add the cleaned up data frames to the list 
+    clean.data.frame.list[i] <- spread.date.sales
+    
+    
+  }
+  
+  #rbind the data frames in the list into one big data frame
+  clean.files<- as.data.frame(bind_rows(data.frame.list))
+  
+  return(clean.files);
+}
 
 
-# fileNamesList <- c("1106","1107","1108")
-# CombineFiles<-function(fileNamesList){
-#   df2<- data.frame()
-#   for(i in 1:length(fileNamesList)){
-#     #read file 
-#     df1<- as.data.frame( read.csv(paste0(wd,fileNamesList[i]),header = FALSE,sep =";"))
-#     #remove last row
-#     df1<-df1[-nrow(df1),]
-#     #Remove the first row 
-#     df1<- df1[-1,]
-#     #combine all files
-#     df2<-rbind(df2,df1)
-#   }
-#   return (df2);
-# }
-# 
-# 
-# DataCleanUp<- function(){
-#   
-#   #call CombineFiles function that will return the data frame that contains all files
-#   allFiles<- CombineFiles(fileNamesList)
-#   
-#   #Retrieve sales dates
-#   columnNames <- colnames(allFiles)
-#   dates<- columnNames[8:length(columnNames)]
-#   numUniqueDates<- length(dates)/3
-#   uniqueDates <- vector()
-#   for(i in 0:numUniqueDates-1){
-#     uniqueDates[i+1]<-dates[i*3 +1] 
-#   }
-#   
-#   
-#   #Change Column names
-#   firstColNames <- c("SuppCd","SupplierName","SubDepartment","ProductCode","EAN","ProductDescription","Size")
-#   numRows <- nrow(allFiles)
-#   numCols<- ncol(allFiles)
-#   
-#   cn <-c("SalesExclVAT","SalesQuantity","GP(%)")
-#   repeatedColNames <-(rep(cn,numUniqueDates))
-#   colnames(allFiles)<-c(firstColNames,repeatedColNames)
-#   
-#   #Split allFiles data frame to productInfo and Sales info
-#   productInfo <- allFiles[1:numRows,1:7]
-#   salesInfo <- allFiles[1:numRows,8:numCols]
-#   colnames(salesInfo)<-repeatedColNames
-#   
-#   
-#   #Clean up data to a long format
-#   finalDT<- data.frame()
-#   for(j in 0:(length(uniqueDates)-1)){
-#     sales<- salesInfo[1:numRows,(j*3 +1):((1+j)*3)] #daily sales 
-#     Date<- rep(uniqueDates[j+1],numRows)
-#     productAndSales <- cbind(productInfo,Date,sales) #Create a new data frame that has product info, dates and sales
-#     finalDT<- rbind(finalDT,productAndSales)
-#   }
-#   return (finalDT);
-# }
-# 
-# 
-# cleanData <- DataCleanUp()
-# #Writing output on an excel file
-# wb <- createWorkbook("Clean Data")
-# addWorksheet(wb = wb, sheetName = "Clean Data")
-# writeDataTable(wb = wb, sheet = "Clean Data", x = cleanData,withFilter = FALSE)
-# saveWorkbook(wb = wb, file = paste0(wd,"/Clean Data.xlsx"), overwrite = TRUE)
+
+
+cleanData <- DataCleanUp(file.list)
+#Writing output on an excel file
+wb <- createWorkbook("Clean Data")
+addWorksheet(wb = wb, sheetName = "Clean Data")
+writeDataTable(wb = wb, sheet = "Clean Data", x = cleanData,withFilter = FALSE)
+saveWorkbook(wb = wb, file = paste0(wd,"/Clean Data.xlsx"), overwrite = TRUE)
+
+#I'm trying out these branching thing, don't mind me. 
