@@ -81,3 +81,4 @@ writeDataTable(wb = wb, sheet = "Clean Data", x = cleanData,withFilter = FALSE)
 saveWorkbook(wb = wb, file = paste0(wd,"/Clean Data.xlsx"), overwrite = TRUE)
 
 #I'm trying out these branching thing, don't mind me. 
+# Testing how to push branch changes to the remote machine 
